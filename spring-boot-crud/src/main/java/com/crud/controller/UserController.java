@@ -1,5 +1,7 @@
 package com.crud.controller;
 
+import javax.validation.Valid;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -12,12 +14,14 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-
 import org.springframework.web.bind.annotation.RestController;
 
+import com.crud.dto.ErrorDto;
 import com.crud.dto.IUsersDto;
+import com.crud.dto.Sucessdto;
 import com.crud.dto.UsersDto;
 import com.crud.entity.Users;
+import com.crud.exception.UsersNotFoundException;
 import com.crud.serviceimpl.CrudServiceImpl;
 
 @RestController
@@ -29,7 +33,7 @@ public class UserController {
 	private CrudServiceImpl crudServiceImpl; // naming convention
 //get by all and pagination  with Dto and response entity
 
-	@GetMapping("/getPagination")
+	@GetMapping("/")
 
 	public ResponseEntity<?> getAllInfoCv(@RequestParam(value = "search") String search,
 			@RequestParam(value = "pageNo") String pageNo, @RequestParam(value = "pageSize") String pageSize) {
@@ -40,39 +44,55 @@ public class UserController {
 			return new ResponseEntity<>("", HttpStatus.NOT_FOUND);
 		}
 	}
-	// Get by id with Dto
 
 	@GetMapping("/{id}")
-	public UsersDto getbyId(@PathVariable long id) throws Exception {
-		return crudServiceImpl.getByIdfromDto(id);
+	public ResponseEntity<?> getbyId(@PathVariable long id) throws Exception  {
+	
+		try {
+			UsersDto usres = crudServiceImpl.getByIdfromDto(id);
+		return new ResponseEntity<>(new Sucessdto("Sucesss", "sucess", usres), HttpStatus.OK);
+		}
+		catch (UsersNotFoundException e) {
+			return new ResponseEntity<>(new ErrorDto("idCanNotExit",e.getMessage()),HttpStatus.NOT_FOUND);
+		}
 	}
 
 	// Add data
 	@PostMapping() // avoid that type
-	public String addData(@RequestBody Users user) {
-		crudServiceImpl.addUser(user);
-		return "Successfull Added User";
+	public ResponseEntity<?> addData(@Valid @RequestBody Users user) {
+		try {
+			crudServiceImpl.addUser(user);
+
+			return new ResponseEntity<>(new Sucessdto(" Succesfully", "Added Users", null), HttpStatus.CREATED);
+		} catch (Exception E) {
+
+			return new ResponseEntity<>(new ErrorDto("canNotPutData", E.toString()), HttpStatus.NOT_ACCEPTABLE);
+
+		}
 	}
 
-	// Delete Data
 	@PutMapping("/{id}")
-	public String updateData(@RequestBody Users user, @PathVariable long id) throws Exception {
-		crudServiceImpl.updateUser(user, id);
-		return " Successfully Updated User";
+	public ResponseEntity<?> updateData(@Valid @RequestBody Users user, @PathVariable long id) throws Exception {
+		try {
+			crudServiceImpl.updateUser(user, id);
+			return new ResponseEntity<>(new Sucessdto("sucess", "sucess", null), HttpStatus.OK);
+		} catch (UsersNotFoundException exception) {
+			return new ResponseEntity<>(new ErrorDto("cantNotUpdatedUsers ",exception.toString()),HttpStatus.NOT_ACCEPTABLE);
+
+		}
+
 	}
 
 	@DeleteMapping("/{id}")
-	public String deleteData(@PathVariable long id) {
-		crudServiceImpl.deleteUser(id);
-		return " Deleted ";
-	}
+	public ResponseEntity<?> deleteEntity(@PathVariable(value = "id") long id) throws UsersNotFoundException {
+		try {
 
-//	@GetMapping("/admin/{pageNo}/{pageSize}")
-//	public List<UsersDto> getAllCv(@PathVariable Integer pageNo, @PathVariable Integer pageSize) {
-//		Page<UsersDto> cvs = crudServiceImpl.findAllwithPage( pageNo, pageSize);
-//
-//	    	List<UsersDto> r= cvs.getContent();
-//		return r;
-//	}
+			Users entity = crudServiceImpl.deleteEntity(id);
+			return new ResponseEntity<>(new Sucessdto("Success", "success", null), HttpStatus.OK);
+		} catch (UsersNotFoundException e) {
+			return new ResponseEntity<>(new ErrorDto(e.getMessage(), "entityNotFound"), HttpStatus.NOT_FOUND);
+		}
+		
+	}
 
 }

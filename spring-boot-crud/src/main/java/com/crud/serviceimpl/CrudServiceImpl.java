@@ -2,6 +2,7 @@ package com.crud.serviceimpl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -12,12 +13,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+
 import com.crud.dto.IUsersDto;
 import com.crud.dto.UsersDto;
 import com.crud.entity.Users;
+import com.crud.exception.UsersNotFoundException;
 import com.crud.repository.Repositorys;
 import com.crud.service.CrudService;
-
+  
 @Service
 public class CrudServiceImpl implements CrudService {
 
@@ -30,9 +33,9 @@ public class CrudServiceImpl implements CrudService {
 		Pageable paging = PageRequest.of(Integer.parseInt(pageNo) - 1, Integer.parseInt(pageSize));
 		Page<IUsersDto> cvList;
 		if ((search == "") || (search == null) || (search.length() == 0)) {
-			cvList = repository.findByOrderById(paging, IUsersDto.class);
+			cvList = repository.findByIsActiveTrueOrderById(paging, IUsersDto.class);
 		} else {
-			cvList = repository.findByEmailContainingIgnoreCaseOrderById(StringUtils.trimLeadingWhitespace(search),
+			cvList = repository.findByEmailContainingIgnoreCaseAndIsActiveTrueOrderById(StringUtils.trimLeadingWhitespace(search),
 					paging, IUsersDto.class);
 		}
 		return cvList;
@@ -41,8 +44,12 @@ public class CrudServiceImpl implements CrudService {
 	}
 
 	@Override
-	public UsersDto getByIdfromDto(long id) {
-		Users users = repository.findById(id).orElseThrow();
+	public UsersDto getByIdfromDto(long id) throws Exception {
+		Users users = repository.findByIdAndIsActiveTrue(id).orElseThrow(() -> new UsersNotFoundException());
+		
+		if(users==null) {
+			throw new Exception("Id Not Found");
+		}
 
 		UsersDto usersDto = new UsersDto();
 		usersDto.setId(users.getId());
@@ -52,28 +59,28 @@ public class CrudServiceImpl implements CrudService {
 	}
 
 	@Override
-	public String addUser(Users user) {
+	public void addUser(Users user) {
 
 		repository.save(user);
-		return null;
+	
 	}
+//
+//	@Override
+//	public void deleteUser(long id) {
+//		repository.deleteById(id);
+////
+//
+//	}
 
 	@Override
-	public void deleteUser(long id) {
+	public Users updateUser(Users user, long id) throws Exception {
 
-		repository.deleteById(id);
-
-	}
-
-	@Override
-	public String updateUser(Users user, long id) throws Exception {
-
-		Users user1 = repository.findById(id).orElseThrow(() -> new Exception("id dosn't exit"));
+		Users user1 = repository.findByIdAndIsActiveTrue(id).orElseThrow(() -> new UsersNotFoundException());
 //		 user1.setId(user.getId()); // we cannot  change id because id is a primary key
 		user1.setName(user.getName());
 		user1.setEmail(user.getEmail());
-		repository.save(user1);
-		return null; // dont pass null
+		return repository.save(user1);
+		 // dont pass null
 	}
 
 	// converter of entity to dto
@@ -91,22 +98,26 @@ public class CrudServiceImpl implements CrudService {
 		return user;
 	}
 
-//	public Page<UsersDto> getDto(int pageN, int pageS) {
-//		List<UsersDto> user = getAllDto();
-//		
-//		Page<UsersDto> users = new PageImpl<UsersDto>(user, page, user.size());
-//		return users;
-//
-//	}
-
-	public List<UsersDto> getPagingDto(int pageNo, int pageSize) {
-		Pageable page = PageRequest.of(pageNo - 1, pageSize);
-		List<UsersDto> user = getAllDto();
-
-		Page<UsersDto> p = new PageImpl<UsersDto>(user, page, user.size());
-
-		List<UsersDto> S = p.getContent();
-		return S;
+	@Override
+	public Users deleteEntity(long id) throws UsersNotFoundException{
+		
+		Users entity = repository.findById(id).orElseThrow(() -> new UsersNotFoundException());
+		entity.setIsActive(!entity.getIsActive());
+		Users entityResponse = repository.save(entity);
+		return entityResponse;
 	}
+ public Users aciveEntity(long id) throws UsersNotFoundException{
+		
+		Users entity = repository.findById(id).orElseThrow(() -> new UsersNotFoundException());
+//		entity.getIsActive(true);
+	
+		Users entityResponse = repository.save(entity);
+		return entityResponse;
+
+
+ }
+
+
+
 
 }
